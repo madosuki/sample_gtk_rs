@@ -1,15 +1,15 @@
-/*
-extern crate gio;
-extern crate glib;
-extern crate gtk;
-*/
+#![feature(local_key_cell_methods)]
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
+use std::thread;
 
 use gio::{prelude::*, ApplicationFlags};
 use gtk::prelude::*;
-
 use gtk::{Application, ApplicationWindow, Button};
 
-static mut FILE_PATH: Option<String> = Option::None;
+thread_local! {
+    static FILE_PATH: RefCell<Option<String>> = RefCell::new(Option::None);
+}
 
 fn on_activate(app: &gtk::Application) {
     let window = ApplicationWindow::new(app);
@@ -24,14 +24,17 @@ fn on_activate(app: &gtk::Application) {
     //
 
     let _image = gtk::Image::new();
-    let path_string = unsafe {
-        match FILE_PATH.clone() {
-            Some(v) => {
-                v
-            },
-            _ => "".to_owned()
-        } 
-    };
+    let path_string =
+        FILE_PATH.with_borrow(|x| -> String {
+            match x {
+                Some(v) => {
+                    v.clone()
+                },
+                _ => "".to_owned()
+            }
+        })
+    ;
+    println!("{}", &path_string);
     let path = 
         if path_string.len() > 0 {
             Some(std::path::Path::new(&path_string))
@@ -53,9 +56,9 @@ fn local_options_handler(_app: &Application, _options: &glib::VariantDict) -> i3
     match _options.lookup_value("file", Option::None) {
         Some(v) => {
             let s = v.data().iter().map(|&i| i as char).collect::<String>().trim_matches(char::from(0)).to_owned();
-            unsafe {
-                FILE_PATH = Some(s);
-            }
+            FILE_PATH.with(|x| {
+                *x.borrow_mut() = Some(s);
+            })
         },
         _ => {
             println!("not found");
