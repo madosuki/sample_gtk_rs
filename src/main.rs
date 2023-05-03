@@ -33,7 +33,7 @@ impl MainWindow {
         //
 
         let _image = gtk::Image::new();
-        let mut path_string =
+        let path_string: String =
             FILE_PATH.with_borrow(|x| -> String {
                 match x {
                     Some(v) => {
@@ -41,8 +41,8 @@ impl MainWindow {
                     },
                     _ => "".to_owned()
                 }
-            })
-            ;
+            });
+        
         println!("path: {}\nbytes: {:?}", &path_string, &path_string.as_bytes());
         // path_string.pop();
         let path = 
@@ -52,24 +52,25 @@ impl MainWindow {
                 None
             };
 
-        // using pixbuf loader pattern
-        let mut f = File::open(path.unwrap()).unwrap();
-        let mut buf: Vec<u8> = vec!();
-        let _ = f.read_to_end(&mut buf);
-        let pixbuf_loader = gdk_pixbuf::PixbufLoader::new();
-        pixbuf_loader.write(&buf);
-        let pixbuf_data = pixbuf_loader.pixbuf().unwrap();
-        pixbuf_loader.close();
-        _image.set_from_pixbuf(Some(&pixbuf_data));
+        if path.is_some() {
+            // using pixbuf loader pattern
+            let mut f = File::open(path.unwrap()).unwrap();
+            let mut buf: Vec<u8> = vec!();
+            let _ = f.read_to_end(&mut buf);
+            let pixbuf_loader = gdk_pixbuf::PixbufLoader::new();
+            let _ = pixbuf_loader.write(&buf);
+            let pixbuf_data = pixbuf_loader.pixbuf().unwrap();
+            let _ = pixbuf_loader.close();
+            _image.set_from_pixbuf(Some(&pixbuf_data));
 
-        // using set_from_file pattern
-        // _image.set_from_file(Some(path));
+            // using set_from_file pattern
+            // _image.set_from_file(Some(path));
 
+            // _image.set_from_file(path);
+            let _scrolled = gtk::ScrolledWindow::builder().child(&_image).build();
 
-        // _image.set_from_file(path);
-        let _scrolled = gtk::ScrolledWindow::builder().child(&_image).build();
-
-        self.main_window.add(&_scrolled);
+            self.main_window.add(&_scrolled);
+        }
         // window.set_child(Some(&_scrolled));
 
         self.main_window.show_all();
@@ -97,7 +98,7 @@ fn local_options_handler(_app: &Application, _options: &glib::VariantDict) -> i3
             })
         },
         _ => {
-            println!("not found");
+            println!("option not found");
         }
     }
     -1
