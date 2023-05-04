@@ -59,6 +59,8 @@ impl MainWindow {
 
             if let Some(image_container) = generate_gtk_image_from_file (path_unwraped) {
                 let _scrolled = gtk::ScrolledWindow::builder().child(&image_container.image_object).build();
+                _scrolled.set_vexpand(true);
+                _scrolled.set_hexpand(true);
                 grid.attach(&_scrolled, 0, 200, image_container.pixbuf_data.width(), image_container.pixbuf_data.height());
             }
             
