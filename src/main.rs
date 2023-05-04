@@ -3,11 +3,13 @@ use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::thread;
 use std::fs::File;
+use std::fs::metadata;
 use std::io::Read;
 use std::convert::TryInto;
 
 use gio::{prelude::*, ApplicationFlags};
 use gtk::prelude::*;
+use gtk::prelude::{ GridExt };
 use gtk::{Application, ApplicationWindow, Button};
 use glib;
 use gdk_pixbuf;
@@ -24,15 +26,16 @@ impl MainWindow {
     fn init(&self) {
         self.main_window.set_title("First GTK+ Program");
         self.main_window.set_default_size(1024, 768);
+
+        let grid = gtk::Grid::new();
+        self.main_window.add(&grid);
         
         let button = Button::with_label("Click me!");
         button.connect_clicked(|_| {
             println!("Clicked!");
         });
-        // window.add(&button);
-        //
+        grid.attach(&button, 0, 0, 100, 100);
 
-        let _image = gtk::Image::new();
         let path_string: String =
             FILE_PATH.with_borrow(|x| -> String {
                 match x {
@@ -44,7 +47,6 @@ impl MainWindow {
             });
         
         println!("path: {}\nbytes: {:?}", &path_string, &path_string.as_bytes());
-        // path_string.pop();
         let path = 
             if path_string.len() > 0 {
                 Some(std::path::Path::new(&path_string))
@@ -53,29 +55,51 @@ impl MainWindow {
             };
 
         if path.is_some() {
-            // using pixbuf loader pattern
-            let mut f = File::open(path.unwrap()).unwrap();
-            let mut buf: Vec<u8> = vec!();
-            let _ = f.read_to_end(&mut buf);
-            let pixbuf_loader = gdk_pixbuf::PixbufLoader::new();
-            let _ = pixbuf_loader.write(&buf);
-            let pixbuf_data = pixbuf_loader.pixbuf().unwrap();
-            let _ = pixbuf_loader.close();
-            _image.set_from_pixbuf(Some(&pixbuf_data));
+            let path_unwraped = path.unwrap();
 
-            // using set_from_file pattern
-            // _image.set_from_file(Some(path));
-
-            // _image.set_from_file(path);
-            let _scrolled = gtk::ScrolledWindow::builder().child(&_image).build();
-
-            self.main_window.add(&_scrolled);
+            if let Some(image_container) = generate_gtk_image_from_file (path_unwraped) {
+                let _scrolled = gtk::ScrolledWindow::builder().child(&image_container.image_object).build();
+                grid.attach(&_scrolled, 0, 200, image_container.pixbuf_data.width(), image_container.pixbuf_data.height());
+            }
+            
         }
-        // window.set_child(Some(&_scrolled));
 
         self.main_window.show_all();
-        
     }
+}
+
+struct ImageContainer {
+    image_object: gtk::Image,
+    pixbuf_data: gdk_pixbuf::Pixbuf,
+}
+
+fn generate_gtk_image_from_file(file_path: &std::path::Path) -> Option<ImageContainer> {
+    let md = metadata(file_path).unwrap();
+    
+    if md.is_file() {
+
+        let _image = gtk::Image::new();
+        
+        // using pixbuf loader pattern
+        let mut f = File::open(file_path).unwrap();
+        let mut buf: Vec<u8> = vec!();
+        let _ = f.read_to_end(&mut buf);
+        let pixbuf_loader = gdk_pixbuf::PixbufLoader::new();
+        let _ = pixbuf_loader.write(&buf);
+        let pixbuf_data = pixbuf_loader.pixbuf().unwrap();
+        let _ = pixbuf_loader.close();
+        _image.set_from_pixbuf(Some(&pixbuf_data));
+
+        let image_container = ImageContainer {
+            image_object: _image,
+            pixbuf_data,
+        };
+
+
+        return Some(image_container);
+    }
+
+    None
 }
 
 fn on_activate(app: &gtk::Application) {
